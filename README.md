@@ -21,6 +21,7 @@ var button = newControlBox(0, 0, 10, 10)
 button.onMDown(0, gameContext) do(pos: IVec2):
   echo "Button area was clicked"
 
+# Register callback on a ControlRadius
 var radiusButton = newControlRadius(10, 10, 5)
 radiusButton.onMDown(0, gameContext) do(pos: IVec2):
   echo "Radius button was clicked"
