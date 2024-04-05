@@ -23,6 +23,7 @@ type
 
   ButtonControl* = ref object of RootObj
     button*: NicoButton
+    player*: int
 
   ButtonHold* = ref object of ButtonControl
     onPress*: proc()
@@ -63,7 +64,8 @@ type
     keyControls*: seq[KeyControl]
 
   ContextHandler* = object
-    current: ControlContext
+    global*: ControlContext
+    current*: ControlContext
     context: Table[string, ControlContext]
 
 proc add*(handler: var ContextHandler, context: ControlContext) =
@@ -72,33 +74,40 @@ proc add*(handler: var ContextHandler, context: ControlContext) =
 proc setContext*(handler: var ContextHandler, name: string) =
   handler.current = handler.context[name]
 
-proc process*(handler: var ContextHandler) =
-  let (x, y) = mouse()
-  let mv = ivec2(x, y)
-  let buttonControls = handler.context[handler.current.name].buttonControls
-  for control in buttonControls:
+proc process(buttons: var seq[ButtonControl]) =
+  for control in buttons:
     if control of ButtonHold:
       let c = control.ButtonHold
-      if not btn(c.button): continue
+      if c.player > -1:
+        if not btn(c.button, c.player): continue
+      elif not btn(c.button): continue
       c.onPress()
     elif control of ButtonPress:
       let c = control.ButtonPress
+      if c.player > -1:
+        if not btnp(c.button, c.player): continue
       if not btnp(c.button): continue
       c.onPress()
     elif control of ButtonRelease:
       let c = control.ButtonRelease
+      if c.player > -1:
+        if not btnup(c.button, c.player): continue
       if not btnup(c.button): continue
       c.onRelease()
     elif control of ButtonRepeat:
       let c = control.ButtonRepeat
+      if c.player > -1:
+        if not btnpr(c.button, c.player, c.repeat): continue
       if not btnpr(c.button, c.repeat): continue
       c.onPress()
     elif control of ButtonAny:
       let c = control.ButtonAny
+      if c.player > -1:
+        if not anybtnp(c.player): continue
       if not anybtnp(): continue
       c.onPress()
 
-  let keyControls = handler.context[handler.current.name].keyControls
+proc process(keyControls: var seq[KeyControl]) =
   for control in keyControls:
     if control of KeyPress:
       let c = control.KeyPress
@@ -120,7 +129,9 @@ proc process*(handler: var ContextHandler) =
       if not keypr(c.key, c.repeat): continue
       c.onPress()
 
-  let mouseControls = handler.context[handler.current.name].mouseControls
+proc process(mouseControls: var seq[MouseControl]) =
+  let (x, y) = mouse()
+  let mv = ivec2(x, y)
   for control in mouseControls:
     if control of MouseBtn:
       let c = control.MouseBtn
@@ -163,6 +174,16 @@ proc process*(handler: var ContextHandler) =
       c.onMove(c.lastPos, mv)
       c.lastPos = mv
 
+proc process*(handler: var ContextHandler) =
+  # Process global context, then current context.
+  handler.global.buttonControls.process()
+  handler.global.keyControls.process()
+  handler.global.mouseControls.process()
+  
+  handler.current.buttonControls.process()
+  handler.current.keyControls.process()
+  handler.current.mouseControls.process()
+
 
 proc onKPress*(context: var ControlContext, key: Keycode, cb: proc()) =
   context.keyControls.add(
@@ -202,7 +223,8 @@ proc onBPress*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
     ButtonPress(
       button: button,
-      onPress: cb
+      onPress: cb,
+      player: -1
     )
   )
 
@@ -210,7 +232,8 @@ proc onBHold*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
     ButtonHold(
       button: button,
-      onPress: cb
+      onPress: cb,
+      player: -1
     )
   )
 
@@ -218,23 +241,71 @@ proc onBRelease*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
     ButtonRelease(
       button: button,
-      onRelease: cb
+      onRelease: cb,
+      player: -1
     )
   )
 
-proc onBRepeat*(context: var ControlContext, button: NicoButton, repeat: int = 48, cb: proc()) =
+proc onBRepeat*(context: var ControlContext, button: NicoButton, repeat: int, cb: proc()) =
   context.buttonControls.add(
     ButtonRepeat(
       button: button,
       repeat: repeat,
-      onPress: cb
+      onPress: cb,
+      player: -1
     )
   )
 
 proc onBAny*(context: var ControlContext, cb: proc()) =
   context.buttonControls.add(
     ButtonAny(
-      onPress: cb
+      onPress: cb,
+      player: -1
+    )
+  )
+
+proc onPBPress*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
+  context.buttonControls.add(
+    ButtonPress(
+      button: button,
+      onPress: cb,
+      player: player
+    )
+  )
+
+proc onPBHold*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
+  context.buttonControls.add(
+    ButtonHold(
+      button: button,
+      onPress: cb,
+      player: player
+    )
+  )
+
+proc onPBRelease*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
+  context.buttonControls.add(
+    ButtonRelease(
+      button: button,
+      onRelease: cb,
+      player: player
+    )
+  )
+
+proc onPBRepeat*(context: var ControlContext, button: NicoButton, player: int, repeat: int, cb: proc()) =
+  context.buttonControls.add(
+    ButtonRepeat(
+      button: button,
+      repeat: repeat,
+      onPress: cb,
+      player: player
+    )
+  )
+
+proc onPBAny*(context: var ControlContext, player: int, cb: proc()) =
+  context.buttonControls.add(
+    ButtonAny(
+      onPress: cb,
+      player: player
     )
   )
 
@@ -261,7 +332,7 @@ proc onMClick*(context: var ControlContext, button: range[0..2], cb: proc(pos: I
     )
   )
 
-proc onMRepeat*(context: var ControlContext, button: range[0..2], repeat: int = 48, cb: proc(pos: IVec2)) =
+proc onMRepeat*(context: var ControlContext, button: range[0..2], repeat: int, cb: proc(pos: IVec2)) =
   context.mouseControls.add(
     MouseBtnPr(
       button: button,
@@ -270,52 +341,67 @@ proc onMRepeat*(context: var ControlContext, button: range[0..2], repeat: int = 
     )
   )
 
+proc newContextHandler*(controls: varargs[ControlContext]): ContextHandler =
+  result = ContextHandler(
+    global: ControlContext(name: "_global")
+  )
+  for i, ctx in controls:
+    result.context[ctx.name] = ctx
+    if i == 0:
+      result.current = ctx
+
+proc newControlContext*(name: string): ControlContext =
+  result = ControlContext(name: name)
+
 if isMainModule:
   const orgName = "rcoop"
   const appName = "contexthandler"
 
-  var gameContext = ControlContext(name:"game")
-  var pauseContext = ControlContext(name: "pause_ui")
+  var gameContext = newControlContext("game")
+  var pauseContext = newControlContext("pause_ui")
+  var ctxhnd = newContextHandler(gameContext, pauseContext)
+  
   var gamePaused = false
 
-  gameContext.onKRelease(K_RETURN) do():
+  ctxhnd.global.onKRelease(K_RETURN) do():
     echo "Enter pressed!"
 
   gameContext.onBPress(pcUp) do():
-    echo "Ok!"
+    echo "Up!"
 
-  gameContext.onMHold(0) do(pos: IVec2):
-    echo "ok"
+  pauseContext.onMHold(0) do(pos: IVec2):
+    echo "Mouse hold"
+
+  gameContext.onMClick(0) do(pos: IVec2):
+    echo "Mouse click"
 
   gameContext.onMRepeat(0, 15) do(pos: IVec2):
-    echo "cool"
+    echo "Mouse repeat"
 
-  var handler = ContextHandler()
-  
+  gameContext.onMMove() do(prev: IVec2, pos: IVec2):
+    echo pos.x, ", ", pos.y
+
   gameContext.onBPress(pcStart) do():
-    handler.setContext "pause_ui"
+    ctxhnd.setContext "pause_ui"
     gamePaused = true
     echo "game paused"
   
   pauseContext.onBPress(pcStart) do():
-    handler.setContext "game"
+    ctxhnd.setContext "game"
     gamePaused = false
     echo "game resuming"
 
-  handler.add gameContext
-  handler.add pauseContext
-  handler.setContext("game")
+  ctxhnd.setContext("game")
   
   proc gameInit() =
     discard
 
   proc gameUpdate(dt: float32) =
-    handler.process() # let handler process inputs
+    ctxhnd.process() # let handler process inputs
 
     if gamePaused: return
 
     # Process game
-    echo "game is running"
 
   proc gameDraw() =
     cls()
