@@ -68,6 +68,7 @@ type
     mouseControls*: seq[MouseControl]
     buttonControls*: seq[ButtonControl]
     keyControls*: seq[KeyControl]
+    focus*: ControlBox
 
   ContextHandler* = object
     global*: ControlContext
@@ -399,21 +400,25 @@ proc onMWheel*(context: var ControlContext, cb: proc(dir: int, pos: IVec2)) =
 proc onMDown*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMDown(button) do(pos: IVec2):
     if pos.inside(e):
+      c.focus = e
       cb(pos)
 
 proc onMUp*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMUp(button) do(pos: IVec2):
     if pos.inside(e):
+      c.focus = e
       cb(pos)
 
 proc onMHold*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMHold(button) do(pos: IVec2):
     if pos.inside(e):
+      c.focus = e
       cb(pos)
 
 proc onMRepeat*(e: ControlBox, button: range[0..2], repeat: int, c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMRepeat(button, repeat) do(pos: IVec2):
     if pos.inside(e):
+      c.focus = e
       cb(pos)
 
 proc newContextHandler*(controls: varargs[ControlContext]): ContextHandler =
