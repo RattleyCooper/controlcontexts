@@ -83,6 +83,21 @@ proc inside*(v: IVec2, e: ControlBox): bool =
   let maxY = e.pos.y + e.size.y
   return v.x >= minX and v.x <= maxX and v.y >= minY and v.y <= maxY
 
+proc newControlBox*(pos: (int, int), size: (int, int)): ControlBox =
+  ControlBox(
+    pos: ivec2(pos[0], pos[1]), 
+    size: ivec2(size[0], size[1])
+  )
+
+proc newControlBox*(x: int, y: int, w: int, h: int): ControlBox =
+  ControlBox(
+    pos: ivec2(x, y), 
+    size: ivec2(w, h)
+  )
+
+proc newControlBox*(pos: IVec2, size: IVec2): ControlBox =
+  ControlBox(pos: pos, size: size)
+
 proc add*(handler: var ContextHandler, context: ControlContext) =
   handler.context[context.name] = context
 
