@@ -271,21 +271,61 @@ proc onMRepeat*(context: var ControlContext, button: range[0..2], repeat: int = 
   )
 
 if isMainModule:
-  var cc = ControlContext(name:"game")
+  const orgName = "rcoop"
+  const appName = "contexthandler"
 
-  cc.onKRelease(K_RETURN) do():
+  var gameContext = ControlContext(name:"game")
+  var pauseContext = ControlContext(name: "pause_ui")
+  var gamePaused = false
+
+  gameContext.onKRelease(K_RETURN) do():
     echo "Enter pressed!"
 
-  cc.onBPress(pcUp) do():
+  gameContext.onBPress(pcUp) do():
     echo "Ok!"
 
-  cc.onMHold(0) do(pos: IVec2):
+  gameContext.onMHold(0) do(pos: IVec2):
     echo "ok"
 
-  cc.onMRepeat(0, 15) do(pos: IVec2):
+  gameContext.onMRepeat(0, 15) do(pos: IVec2):
     echo "cool"
 
-  var c1 = ContextHandler()
-  c1.add cc
-  c1.setContext("game")
-  c1.process()
+  var handler = ContextHandler()
+  
+  gameContext.onBPress(pcStart) do():
+    handler.setContext "pause_ui"
+    gamePaused = true
+    echo "game paused"
+  
+  pauseContext.onBPress(pcStart) do():
+    handler.setContext "game"
+    gamePaused = false
+    echo "game resuming"
+
+  handler.add gameContext
+  handler.add pauseContext
+  handler.setContext("game")
+  
+  proc gameInit() =
+    discard
+
+  proc gameUpdate(dt: float32) =
+    handler.process() # let handler process inputs
+
+    if gamePaused: return
+
+    # Process game
+    echo "game is running"
+
+  proc gameDraw() =
+    cls()
+
+  nico.init(orgName, appName)
+
+  nico.createWindow(
+    appName, 
+    100, 80,
+    6, 
+    false
+  )
+  nico.run(gameInit, gameUpdate, gameDraw)
