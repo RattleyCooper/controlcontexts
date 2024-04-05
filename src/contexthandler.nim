@@ -56,7 +56,7 @@ type
 proc add*(handler: var ContextHandler, context: ControlContext) =
   handler.context[context.name] = context
 
-proc use*(handler: var ContextHandler, name: string) =
+proc setContext*(handler: var ContextHandler, name: string) =
   handler.current = handler.context[name]
 
 proc process*(handler: var ContextHandler) =
@@ -214,5 +214,5 @@ if isMainModule:
 
   var c1 = ContextHandler()
   c1.add cc
-  c1.use("game")
+  c1.setContext("game")
   c1.process()
