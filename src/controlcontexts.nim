@@ -411,6 +411,10 @@ proc onMHold*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: pro
     if pos.inside(e):
       cb(pos)
 
+proc onMRepeat*(e: ControlBox, button: range[0..2], repeat: int, c: var ControlContext, cb: proc(pos: IVec2)) =
+  c.onMRepeat(button, repeat) do(pos: IVec2):
+    if pos.inside(e):
+      cb(pos)
 
 proc newContextHandler*(controls: varargs[ControlContext]): ContextHandler =
   result = ContextHandler(
