@@ -12,9 +12,10 @@ type
   
   KeyHold* = ref object of KeyControl
     onPress*: proc()
-  KeyPress* = ref object of KeyControl
+  KeyDown* = ref object of KeyControl
+    ended: bool
     onPress*: proc()
-  KeyRelease* = ref object of KeyControl
+  KeyUp* = ref object of KeyControl
     lastVal*: bool
     onRelease*: proc()
   KeyRepeat* = ref object of KeyControl
@@ -27,9 +28,9 @@ type
 
   ButtonHold* = ref object of ButtonControl
     onPress*: proc()
-  ButtonPress* = ref object of ButtonControl
+  ButtonDown* = ref object of ButtonControl
     onPress*: proc()
-  ButtonRelease* = ref object of ButtonControl
+  ButtonUp* = ref object of ButtonControl
     onRelease*: proc()
   ButtonRepeat* = ref object of ButtonControl
     onPress*: proc()
@@ -45,6 +46,8 @@ type
   MouseRel* = ref object of MouseControl
     onRelease*: proc(pos: Vec2)
 
+  MouseUp* = ref object of MouseControl
+    ended: bool
   MouseBtnP* = ref object of MouseControl
   MouseBtnPr* = ref object of MouseControl
     repeat*: int
@@ -54,8 +57,7 @@ type
     onMove*: proc(previous: IVec2, current: IVec2)
 
   MouseWheel* = ref object of MouseControl
-    onWheelUp*: proc(pos: IVec2)
-    onWheelDown*: proc(pos: IVec2)
+    onWheel*: proc(dir: int, pos: IVec2)
 
   ControlContext* = ref object of RootObj
     name*: string
@@ -82,14 +84,14 @@ proc process(buttons: var seq[ButtonControl]) =
         if not btn(c.button, c.player): continue
       elif not btn(c.button): continue
       c.onPress()
-    elif control of ButtonPress:
-      let c = control.ButtonPress
+    elif control of ButtonDown:
+      let c = control.ButtonDown
       if c.player > -1:
         if not btnp(c.button, c.player): continue
       if not btnp(c.button): continue
       c.onPress()
-    elif control of ButtonRelease:
-      let c = control.ButtonRelease
+    elif control of ButtonUp:
+      let c = control.ButtonUp
       if c.player > -1:
         if not btnup(c.button, c.player): continue
       if not btnup(c.button): continue
@@ -109,12 +111,16 @@ proc process(buttons: var seq[ButtonControl]) =
 
 proc process(keyControls: var seq[KeyControl]) =
   for control in keyControls:
-    if control of KeyPress:
-      let c = control.KeyPress
-      if not keyp(c.key): continue
-      c.onPress()
-    elif control of KeyRelease:
-      let c = control.KeyRelease
+    if control of KeyDown:
+      let c = control.KeyDown
+      let keydown = key(c.key)
+      if c.ended and keydown:
+        c.ended = false
+        c.onPress()
+      elif not c.ended and not keydown:
+        c.ended = true
+    elif control of KeyUp:
+      let c = control.KeyUp
       if c.lastVal and not key(c.key):
         c.onRelease()
         c.lastVal = false
@@ -138,7 +144,14 @@ proc process(mouseControls: var seq[MouseControl]) =
       let pressed = mousebtn(c.button)
       if not pressed: continue
       c.onClick(mv)
-
+    elif control of MouseUp:
+      let c = control.MouseUp
+      let down = mousebtn(c.button)
+      if not c.ended and not down:
+        c.ended = true
+        c.onClick(mv)
+      elif c.ended and down:
+        c.ended = false
     elif control of MouseBtnP:
       let c = control.MouseBtnP
       let pressed = mousebtnp(c.button)
@@ -159,13 +172,8 @@ proc process(mouseControls: var seq[MouseControl]) =
 
     elif control of MouseWheel:
       let c = control.MouseWheel
-      case mousewheel():
-      of -1:
-        c.onWheelDown(mv)
-      of 1:
-        c.onWheelUp(mv)
-      else:
-        discard
+      let wd = mousewheel()
+      c.onWheel(wd, mv)
 
     elif control of MouseMove:
       let c = control.MouseMove
@@ -185,28 +193,32 @@ proc process*(handler: var ContextHandler) =
   handler.current.mouseControls.process()
 
 
-proc onKPress*(context: var ControlContext, key: Keycode, cb: proc()) =
+proc onKDown*(context: var ControlContext, key: Keycode, cb: proc()) =
   context.keyControls.add(
-    KeyPress(
+    KeyDown(
       key: key,
-      onPress: cb
+      onPress: cb,
+      ended: true
     )
   )
+
+proc onKUp*(context: var ControlContext, key: Keycode, cb: proc()) =
+  context.keyControls.add(
+    KeyUp(
+      key: key,
+      lastVal: false,
+      onRelease: cb
+    )
+  )
+
+proc onKPress*(context: var ControlContext, key: Keycode, cb: proc()) =
+  context.onKDown(key, cb)
 
 proc onKHold*(context: var ControlContext, key: Keycode, cb: proc()) =
   context.keyControls.add(
     KeyHold(
       key: key,
       onPress: cb
-    )
-  )
-
-proc onKRelease*(context: var ControlContext, key: Keycode, cb: proc()) =
-  context.keyControls.add(
-    KeyRelease(
-      key: key,
-      lastVal: false,
-      onRelease: cb
     )
   )
 
@@ -219,14 +231,17 @@ proc onKRepeat*(context: var ControlContext, key: Keycode, repeat: int = 48, cb:
     )
   )
 
-proc onBPress*(context: var ControlContext, button: NicoButton, cb: proc()) =
+proc onBDown*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
-    ButtonPress(
+    ButtonDown(
       button: button,
       onPress: cb,
       player: -1
     )
   )
+
+proc onBPress*(context: var ControlContext, button: NicoButton, cb: proc()) =
+  context.onBDown(button, cb)
 
 proc onBHold*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
@@ -237,9 +252,9 @@ proc onBHold*(context: var ControlContext, button: NicoButton, cb: proc()) =
     )
   )
 
-proc onBRelease*(context: var ControlContext, button: NicoButton, cb: proc()) =
+proc onButtonUp*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
-    ButtonRelease(
+    ButtonUp(
       button: button,
       onRelease: cb,
       player: -1
@@ -264,14 +279,17 @@ proc onBAny*(context: var ControlContext, cb: proc()) =
     )
   )
 
-proc onPBPress*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
+proc onPBDown*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
   context.buttonControls.add(
-    ButtonPress(
+    ButtonDown(
       button: button,
       onPress: cb,
       player: player
     )
   )
+
+proc onPBPress*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
+  context.onPBDown(button, player, cb)
 
 proc onPBHold*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
   context.buttonControls.add(
@@ -282,9 +300,9 @@ proc onPBHold*(context: var ControlContext, button: NicoButton, player: int, cb:
     )
   )
 
-proc onPBRelease*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
+proc onPButtonUp*(context: var ControlContext, button: NicoButton, player: int, cb: proc()) =
   context.buttonControls.add(
-    ButtonRelease(
+    ButtonUp(
       button: button,
       onRelease: cb,
       player: player
@@ -324,11 +342,29 @@ proc onMHold*(context: var ControlContext, button: range[0..2], cb: proc(pos: IV
     )
   )
 
-proc onMClick*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
+proc onMPress*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
   context.mouseControls.add(
     MouseBtnP(
       button: button,
       onClick: cb
+    )
+  )
+
+proc onMDown*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
+  context.onMPress(button, cb)
+
+proc onMUp*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
+  context.mouseControls.add(
+    MouseUp(
+      ended: true,
+      onClick: cb
+    )
+  )
+
+proc onMRelease*(context: var ControlContext, cb: proc(pos: Vec2)) =
+  context.mouseControls.add(
+    MouseRel(
+      onRelease: cb
     )
   )
 
@@ -338,6 +374,13 @@ proc onMRepeat*(context: var ControlContext, button: range[0..2], repeat: int, c
       button: button,
       repeat: repeat,
       onClick: cb
+    )
+  )
+
+proc onMWheel*(context: var ControlContext, cb: proc(dir: int, pos: IVec2)) =
+  context.mouseControls.add(
+    MouseWheel(
+      onWheel: cb
     )
   )
 
@@ -363,17 +406,35 @@ if isMainModule:
   
   var gamePaused = false
 
-  ctxhnd.global.onKRelease(K_RETURN) do():
-    echo "Enter pressed!"
+  ctxhnd.global.onKUp(K_RETURN) do():
+    echo "Enter key up!"
 
-  gameContext.onBPress(pcUp) do():
+  ctxhnd.global.onKHold(K_DELETE) do():
+    echo "Delete key held"
+
+  gameContext.onBDown(pcUp) do():
     echo "Up!"
+
+  pauseContext.onMWheel() do(dir: int, pos: IVec2):
+    if dir == -1:
+      echo "wheel down at ", pos.x, ", ", pos.y
+    elif dir == 1:
+      echo "wheel up at ", pos.x, ", ", pos.y
 
   pauseContext.onMHold(0) do(pos: IVec2):
     echo "Mouse hold"
 
-  gameContext.onMClick(0) do(pos: IVec2):
+  gameContext.onMPress(0) do(pos: IVec2):
     echo "Mouse click"
+
+  gameContext.onMUp(0) do(pos: IVec2):
+    echo "mouse up"
+
+  gameContext.onKUp(K_HOME) do():
+    echo "Take me hooooome"
+
+  gameContext.onKDown(K_INSERT) do():
+    echo "Insert key pressed"
 
   gameContext.onMRepeat(0, 15) do(pos: IVec2):
     echo "Mouse repeat"
@@ -381,12 +442,13 @@ if isMainModule:
   gameContext.onMMove() do(prev: IVec2, pos: IVec2):
     echo pos.x, ", ", pos.y
 
+  # onBPress / onBDown are the same
   gameContext.onBPress(pcStart) do():
     ctxhnd.setContext "pause_ui"
     gamePaused = true
     echo "game paused"
   
-  pauseContext.onBPress(pcStart) do():
+  pauseContext.onBDown(pcStart) do():
     ctxhnd.setContext "game"
     gamePaused = false
     echo "game resuming"
