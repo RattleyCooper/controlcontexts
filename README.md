@@ -1,6 +1,14 @@
 # controlcontexts
  A module for Contextual Control Inputs in Nico.
 
+ControlContexts lets you handle game inputs depending on the context of the game. Game controls usually have to be processed depending on a context like if the player is in the main menu, playing the game, or in a pause menu. This lets you handle these inputs easily through the creation of ControlContexts.
+
+You also get a ControlBox and ControlRadius that you can bind mouse inputs to for making things clickable.
+
+## Install
+
+`nimble install https://github.com/RattleyCooper/controlcontexts`
+
 ## Example
 
 ```nim
