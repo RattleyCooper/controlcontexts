@@ -7,6 +7,20 @@ type
   MouseButton* = enum
     mbLeft, mbMiddle, mbRight
 
+  KeyControl* = ref object of RootObj
+    key*: Keycode
+  
+  KeyHold* = ref object of KeyControl
+    onPress*: proc()
+  KeyPress* = ref object of KeyControl
+    onPress*: proc()
+  KeyRelease* = ref object of KeyControl
+    lastVal*: bool
+    onRelease*: proc()
+  KeyRepeat* = ref object of KeyControl
+    onPress*: proc()
+    repeat*: int
+
   ButtonControl* = ref object of RootObj
     button*: NicoButton
 
@@ -25,8 +39,6 @@ type
   MouseControl* = ref object of RootObj
     button*: range[0..2]
     onClick*: proc(pos: IVec2)
-    onEnter*: proc(pos: IVec2)
-    onExit*: proc(pos: IVec2)
 
   MouseBtn* = ref object of MouseControl
   MouseRel* = ref object of MouseControl
@@ -48,6 +60,7 @@ type
     name*: string
     mouseControls*: seq[MouseControl]
     buttonControls*: seq[ButtonControl]
+    keyControls*: seq[KeyControl]
 
   ContextHandler* = object
     current: ControlContext
@@ -83,6 +96,28 @@ proc process*(handler: var ContextHandler) =
     elif control of ButtonAny:
       let c = control.ButtonAny
       if not anybtnp(): continue
+      c.onPress()
+
+  let keyControls = handler.context[handler.current.name].keyControls
+  for control in keyControls:
+    if control of KeyPress:
+      let c = control.KeyPress
+      if not keyp(c.key): continue
+      c.onPress()
+    elif control of KeyRelease:
+      let c = control.KeyRelease
+      if c.lastVal and not key(c.key):
+        c.onRelease()
+        c.lastVal = false
+      elif not c.lastVal and key(c.key):
+        c.lastVal = true
+    elif control of KeyHold:
+      let c = control.KeyHold
+      if not key(c.key): continue
+      c.onPress()
+    elif control of KeyRepeat:
+      let c = control.KeyRepeat
+      if not keypr(c.key, c.repeat): continue
       c.onPress()
 
   let mouseControls = handler.context[handler.current.name].mouseControls
@@ -128,7 +163,42 @@ proc process*(handler: var ContextHandler) =
       c.onMove(c.lastPos, mv)
       c.lastPos = mv
 
-proc onPress*(context: var ControlContext, button: NicoButton, cb: proc()) =
+
+proc onKPress*(context: var ControlContext, key: Keycode, cb: proc()) =
+  context.keyControls.add(
+    KeyPress(
+      key: key,
+      onPress: cb
+    )
+  )
+
+proc onKHold*(context: var ControlContext, key: Keycode, cb: proc()) =
+  context.keyControls.add(
+    KeyHold(
+      key: key,
+      onPress: cb
+    )
+  )
+
+proc onKRelease*(context: var ControlContext, key: Keycode, cb: proc()) =
+  context.keyControls.add(
+    KeyRelease(
+      key: key,
+      lastVal: false,
+      onRelease: cb
+    )
+  )
+
+proc onKRepeat*(context: var ControlContext, key: Keycode, repeat: int = 48, cb: proc()) =
+  context.keyControls.add(
+    KeyRepeat(
+      key: key,
+      repeat: repeat,
+      onPress: cb
+    )
+  )
+
+proc onBPress*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
     ButtonPress(
       button: button,
@@ -136,7 +206,7 @@ proc onPress*(context: var ControlContext, button: NicoButton, cb: proc()) =
     )
   )
 
-proc onHold*(context: var ControlContext, button: NicoButton, cb: proc()) =
+proc onBHold*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
     ButtonHold(
       button: button,
@@ -144,7 +214,7 @@ proc onHold*(context: var ControlContext, button: NicoButton, cb: proc()) =
     )
   )
 
-proc onRelease*(context: var ControlContext, button: NicoButton, cb: proc()) =
+proc onBRelease*(context: var ControlContext, button: NicoButton, cb: proc()) =
   context.buttonControls.add(
     ButtonRelease(
       button: button,
@@ -152,7 +222,7 @@ proc onRelease*(context: var ControlContext, button: NicoButton, cb: proc()) =
     )
   )
 
-proc onRepeat*(context: var ControlContext, button: NicoButton, repeat: int = 48, cb: proc()) =
+proc onBRepeat*(context: var ControlContext, button: NicoButton, repeat: int = 48, cb: proc()) =
   context.buttonControls.add(
     ButtonRepeat(
       button: button,
@@ -161,21 +231,21 @@ proc onRepeat*(context: var ControlContext, button: NicoButton, repeat: int = 48
     )
   )
 
-proc onAny*(context: var ControlContext, cb: proc()) =
+proc onBAny*(context: var ControlContext, cb: proc()) =
   context.buttonControls.add(
     ButtonAny(
       onPress: cb
     )
   )
 
-proc onMouse*(context: var ControlContext, cb: proc(previous: IVec2, current: IVec2)) =
+proc onMMove*(context: var ControlContext, cb: proc(previous: IVec2, current: IVec2)) =
   context.mouseControls.add(
     MouseMove(
       onMove: cb
     )
   )
 
-proc onMouse*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
+proc onMHold*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
   context.mouseControls.add(
     MouseBtn(
       button: button,
@@ -183,7 +253,7 @@ proc onMouse*(context: var ControlContext, button: range[0..2], cb: proc(pos: IV
     )
   )
 
-proc onMouseP*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
+proc onMClick*(context: var ControlContext, button: range[0..2], cb: proc(pos: IVec2)) =
   context.mouseControls.add(
     MouseBtnP(
       button: button,
@@ -191,7 +261,7 @@ proc onMouseP*(context: var ControlContext, button: range[0..2], cb: proc(pos: I
     )
   )
 
-proc onMousePr*(context: var ControlContext, button: range[0..2], repeat: int = 48, cb: proc(pos: IVec2)) =
+proc onMRepeat*(context: var ControlContext, button: range[0..2], repeat: int = 48, cb: proc(pos: IVec2)) =
   context.mouseControls.add(
     MouseBtnPr(
       button: button,
@@ -203,13 +273,16 @@ proc onMousePr*(context: var ControlContext, button: range[0..2], repeat: int = 
 if isMainModule:
   var cc = ControlContext(name:"game")
 
-  cc.onPress(pcUp) do():
+  cc.onKRelease(K_RETURN) do():
+    echo "Enter pressed!"
+
+  cc.onBPress(pcUp) do():
     echo "Ok!"
 
-  cc.onMouse(0) do(pos: IVec2):
+  cc.onMHold(0) do(pos: IVec2):
     echo "ok"
 
-  cc.onMousePr(0, 15) do(pos: IVec2):
+  cc.onMRepeat(0, 15) do(pos: IVec2):
     echo "cool"
 
   var c1 = ContextHandler()
