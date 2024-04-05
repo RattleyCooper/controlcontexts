@@ -4,7 +4,7 @@ import vmath
 
 
 type
-  ControlBound* = object
+  ControlBox* = object
     pos*: IVec2
     size*: IVec2
 
@@ -74,7 +74,7 @@ type
     current*: ControlContext
     context: Table[string, ControlContext]
 
-proc inside*(v: IVec2, e: ControlBound): bool =
+proc inside*(v: IVec2, e: ControlBox): bool =
   # Check if the point (x, y) is inside the UI element defined by pos and size.
   let minX = e.pos.x
   let minY = e.pos.y
@@ -396,17 +396,17 @@ proc onMWheel*(context: var ControlContext, cb: proc(dir: int, pos: IVec2)) =
     )
   )
 
-proc onMDown*(e: ControlBound, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
+proc onMDown*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMDown(button) do(pos: IVec2):
     if pos.inside(e):
       cb(pos)
 
-proc onMUp*(e: ControlBound, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
+proc onMUp*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMUp(button) do(pos: IVec2):
     if pos.inside(e):
       cb(pos)
 
-proc onMHold*(e: ControlBound, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
+proc onMHold*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMHold(button) do(pos: IVec2):
     if pos.inside(e):
       cb(pos)
