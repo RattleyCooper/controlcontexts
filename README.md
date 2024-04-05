@@ -7,11 +7,12 @@
 import nico
 import controlcontexts
 
+# Create control contexts.
+var pauseContext = newControlContext("pause_ui")
+var gameContext = newControlContext("game")
 
-let pauseContext = ControlContext(name:"pause_ui")
-let gameContext = ControlContext(name: "game")
-
-let handler = ContextHandler()
+# Register our contexts with the handler.
+var handler = newContextHandler(pauseContext, gameContext)
 
 # Register control callbacks within a context.
 pauseContext.onBPress(pcStart) do():
@@ -26,9 +27,10 @@ pauseContext.onKPress(K_RETURN) do():
 gameContext.onMClick(0) do(pos: IVec2):
   echo "Mouse clicked at ", pos.x, ", ", pos.y
 
-# Register our contexts with the handler.
-handler.add pauseContext
-handler.add gameContext
+# Global context exists. These execute regardless
+# of the current context.
+handler.global.onKPress(K_END) do():
+  echo "END Pressed!"
 
 # Set our current context
 handler.setContext("pause_ui")
@@ -36,6 +38,5 @@ handler.setContext("pause_ui")
 while true:
   # Process game inputs.
   handler.process()
-
 ```
 
