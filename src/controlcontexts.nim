@@ -1,12 +1,16 @@
 import std/[tables]
 import nico
 import vmath
-
+import math
 
 type
   ControlBox* = object
     pos*: IVec2
     size*: IVec2
+
+  ControlRadius* = object
+    center*: IVec2
+    radius*: int
 
   MouseButton* = enum
     mbLeft, mbMiddle, mbRight
@@ -82,6 +86,21 @@ proc inside*(v: IVec2, e: ControlBox): bool =
   let maxX = e.pos.x + e.size.x
   let maxY = e.pos.y + e.size.y
   return v.x >= minX and v.x <= maxX and v.y >= minY and v.y <= maxY
+
+proc newControlRadius*(pos: (int, int), radius: int): ControlRadius =
+  ControlRadius(
+    center: ivec2(pos[0], pos[1]), 
+    radius: radius
+  )
+
+proc newControlRadius*(x: int, y: int, radius: int): ControlRadius =
+  ControlRadius(
+    center: ivec2(x, y), 
+    radius: radius
+  )
+
+proc newControlRadius*(center: IVec2, radius: int): ControlRadius =
+  ControlRadius(center: center, radius: radius)
 
 proc newControlBox*(pos: (int, int), size: (int, int)): ControlBox =
   ControlBox(
@@ -411,6 +430,33 @@ proc onMWheel*(context: var ControlContext, cb: proc(dir: int, pos: IVec2)) =
       onWheel: cb
     )
   )
+
+
+proc inside(v: IVec2, circle: ControlRadius): bool =
+  # Check if the point (v) is inside the circle defined by its center and radius.
+  let distanceSquared = (v.x - circle.center.x) ^ 2 + (v.y - circle.center.y) ^ 2
+  let radiusSquared = circle.radius ^ 2
+  return distanceSquared <= radiusSquared
+
+proc onMDown*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
+  c.onMDown(button) do(pos: IVec2):
+    if pos.inside(e):
+      cb(pos)
+
+proc onMUp*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
+  c.onMUp(button) do(pos: IVec2):
+    if pos.inside(e):
+      cb(pos)
+
+proc onMHold*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
+  c.onMHold(button) do(pos: IVec2):
+    if pos.inside(e):
+      cb(pos)
+
+proc onMRepeat*(e: ControlRadius, button: range[0..2], repeat: int, c: var ControlContext, cb: proc(pos: IVec2)) =
+  c.onMRepeat(button, repeat) do(pos: IVec2):
+    if pos.inside(e):
+      cb(pos)
 
 proc onMDown*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMDown(button) do(pos: IVec2):
