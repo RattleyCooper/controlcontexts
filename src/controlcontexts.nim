@@ -442,49 +442,41 @@ proc inside(v: IVec2, circle: ControlRadius): bool =
 proc onMDown*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMDown(button) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedRadius = e
       cb(pos)
 
 proc onMUp*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMUp(button) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedRadius = e
       cb(pos)
 
 proc onMHold*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMHold(button) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedRadius = e
       cb(pos)
 
 proc onMRepeat*(e: ControlRadius, button: range[0..2], repeat: int, c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMRepeat(button, repeat) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedRadius = e
       cb(pos)
 
 proc onMDown*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMDown(button) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedBox = e
       cb(pos)
 
 proc onMUp*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMUp(button) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedBox = e
       cb(pos)
 
 proc onMHold*(e: ControlBox, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMHold(button) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedBox = e
       cb(pos)
 
 proc onMRepeat*(e: ControlBox, button: range[0..2], repeat: int, c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMRepeat(button, repeat) do(pos: IVec2):
     if pos.inside(e):
-      c.focusedBox = e
       cb(pos)
 
 proc newContextHandler*(controls: varargs[ControlContext]): ContextHandler =
