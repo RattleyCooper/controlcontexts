@@ -439,6 +439,16 @@ proc inside(v: IVec2, circle: ControlRadius): bool =
   let radiusSquared = circle.radius ^ 2
   return distanceSquared <= radiusSquared
 
+proc onMExit*(e: ControlRadius, c: var ControlContext, cb: proc(prev: IVec2, pos: IVec2)) =
+  c.onMMove() do(prev: IVec2, pos: IVec2):
+    if prev.inside(e) and not pos.inside(e):
+      cb(prev, pos)
+
+proc onMEnter*(e: ControlRadius, c: var ControlContext, cb: proc(prev: IVec2, pos: IVec2)) =
+  c.onMMove() do(prev: IVec2, pos: IVec2):
+    if pos.inside(e) and not prev.inside(e):
+      cb(prev, pos)
+
 proc onMDown*(e: ControlRadius, button: range[0..2], c: var ControlContext, cb: proc(pos: IVec2)) =
   c.onMDown(button) do(pos: IVec2):
     if pos.inside(e):
