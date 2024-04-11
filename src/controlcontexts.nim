@@ -78,7 +78,10 @@ type
   ContextHandler* = object
     global*: ControlContext
     current*: ControlContext
-    context: Table[string, ControlContext]
+    context*: Table[string, ControlContext]
+
+proc `[]`(ctx: ContextHandler, name: string): ControlContext =
+  ctx.context[name]
 
 proc inside*(v: IVec2, e: ControlBox): bool =
   # Check if the point (x, y) is inside the UI element defined by pos and size.
