@@ -70,7 +70,7 @@ type
   ContextHandler*[T] = ref object
     global*: ControlContext[T]
     current*: ControlContext[T]
-    context*: Table[string, ControlContext[T]]
+    context*: TableRef[string, ControlContext[T]]
 
 
 proc newControlRadius*(pos: (int, int), radius: int): ControlRadius =
@@ -447,7 +447,8 @@ proc newControlContext*[T](name: string): ControlContext[T] =
 
 proc newContextHandler*[T](controls: varargs[ControlContext[T]]): ContextHandler[T] =
   result = ContextHandler[T](
-    global: newControlContext[T]("global")
+    global: newControlContext[T]("global"),
+    context: newTable[string, ControlContext[T]]()
   )
   for i, ctx in controls:
     result.context[ctx.name] = ctx
