@@ -207,11 +207,14 @@ proc process*[T](mouseControls: var seq[MouseControl[T]]) =
       control.onMove(control.obj, control.lastPos, mv)
       control.lastPos = mv
 
+proc process*[T](context: var ControlContext[T]) =
+  context.mouseControls.process()
+  context.keyControls.process()
+  context.buttonControls.process()
+
 proc process*[T](handler: var ContextHandler[T]) =
   # Process global context, then current context.
-  handler.current.mouseControls.process()
-  handler.current.keyControls.process()
-  handler.current.buttonControls.process()
+  handler.current.process()
 
 proc setContext*[T](handler: var ContextHandler[T], name: string) =
   handler.current = handler.context[name]
